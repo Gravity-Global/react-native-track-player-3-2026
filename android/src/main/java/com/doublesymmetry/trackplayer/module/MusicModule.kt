@@ -561,6 +561,35 @@ class MusicModule(reactContext: ReactApplicationContext) : NativeTrackPlayerSpec
         callback.resolve(musicService.onStartCommandIntentValid)
     }
 
+    override fun setBrowseTree(data: ReadableMap?, callback: Promise) = launchInScope {
+        if (verifyServiceBoundOrReject(callback)) return@launchInScope
+        val json = org.json.JSONObject()
+        data?.toHashMap()?.forEach { (key, value) ->
+            when (value) {
+                is List<*> -> {
+                    val arr = org.json.JSONArray()
+                    value.forEach { item ->
+                        if (item is Map<*, *>) {
+                            val obj = org.json.JSONObject()
+                            item.forEach { (k, v) -> obj.put(k.toString(), v) }
+                            arr.put(obj)
+                        }
+                    }
+                    json.put(key, arr)
+                }
+                else -> json.put(key, value)
+            }
+        }
+        musicService.setBrowseTree(json.toString())
+        callback.resolve(null)
+    }
+
+    override fun setBrowseTreeStyle(browsableStyle: Double, playableStyle: Double, callback: Promise) = launchInScope {
+        if (verifyServiceBoundOrReject(callback)) return@launchInScope
+        musicService.setBrowseTreeStyle(browsableStyle.toInt(), playableStyle.toInt())
+        callback.resolve(null)
+    }
+
     // Bridgeless interop layer tries to pass the `Job` from `scope.launch` to the JS side
     // which causes an exception. We can work around this using a wrapper.
     private fun launchInScope(block: suspend () -> Unit) {

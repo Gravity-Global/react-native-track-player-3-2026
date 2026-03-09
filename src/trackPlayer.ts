@@ -456,3 +456,22 @@ export async function validateOnStartCommandIntent(): Promise<boolean> {
   if (!isAndroid) return true;
   return TrackPlayer.validateOnStartCommandIntent();
 }
+
+/**
+ * Sets the browse tree data for Android Auto (Android only).
+ * The tree is a map of mediaId to array of child items.
+ */
+export async function setBrowseTree(tree: Record<string, unknown[]>): Promise<void> {
+  if (!isAndroid) return;
+  return TrackPlayer.setBrowseTree(tree as any);
+}
+
+/**
+ * Sets the content style hints for the Android Auto browse tree (Android only).
+ * @param browsableStyle - Content style hint for browsable items (e.g. AndroidAutoContentStyle.List)
+ * @param playableStyle - Content style hint for playable items (e.g. AndroidAutoContentStyle.List)
+ */
+export async function setBrowseTreeStyle(browsableStyle: number, playableStyle: number): Promise<void> {
+  if (!isAndroid) return;
+  return TrackPlayer.setBrowseTreeStyle(browsableStyle, playableStyle);
+}

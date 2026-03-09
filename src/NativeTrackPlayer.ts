@@ -100,6 +100,8 @@ export interface Spec extends TurboModule {
   acquireWakeLock(): Promise<void>;
   abandonWakeLock(): Promise<void>;
   validateOnStartCommandIntent(): Promise<boolean>;
+  setBrowseTree(tree: UnsafeObject): Promise<void>;
+  setBrowseTreeStyle(browsableStyle: number, playableStyle: number): Promise<void>;
 }
 
 const module = TurboModuleRegistry.getEnforcing<Spec>('TrackPlayer');

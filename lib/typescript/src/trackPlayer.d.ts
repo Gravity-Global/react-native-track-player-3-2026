@@ -235,4 +235,12 @@ export declare function abandonWakeLock(): Promise<void>;
  * if musicservice is restarted or not.
  */
 export declare function validateOnStartCommandIntent(): Promise<boolean>;
+/**
+ * Sets the browse tree data for Android Auto (Android only).
+ */
+export declare function setBrowseTree(tree: Record<string, unknown[]>): Promise<void>;
+/**
+ * Sets the content style hints for the Android Auto browse tree (Android only).
+ */
+export declare function setBrowseTreeStyle(browsableStyle: number, playableStyle: number): Promise<void>;
 //# sourceMappingURL=trackPlayer.d.ts.map

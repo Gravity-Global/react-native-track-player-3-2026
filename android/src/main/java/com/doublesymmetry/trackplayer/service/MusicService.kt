@@ -80,6 +80,22 @@ class MusicService : HeadlessJsMediaService() {
         sWakeLock?.release()
     }
 
+    fun setBrowseTree(data: String) {
+        applicationContext.getSharedPreferences("AndroidAutoModule", android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putString("browseTreeData", data)
+            .apply()
+        mediaSession.notifyChildrenChanged("/", Int.MAX_VALUE, null)
+    }
+
+    fun setBrowseTreeStyle(browsableStyle: Int, playableStyle: Int) {
+        applicationContext.getSharedPreferences("AndroidAutoModule", android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putInt("browseTreeBrowsableStyle", browsableStyle)
+            .putInt("browseTreePlayableStyle", playableStyle)
+            .apply()
+    }
+
     fun getBitmapLoader(): BitmapLoader {
         return mediaSession.bitmapLoader
     }
@@ -985,6 +1001,13 @@ class MusicService : HeadlessJsMediaService() {
             browser: MediaSession.ControllerInfo,
             params: androidx.media3.session.MediaLibraryService.LibraryParams?
         ): com.google.common.util.concurrent.ListenableFuture<androidx.media3.session.LibraryResult<androidx.media3.common.MediaItem>> {
+            val prefs = applicationContext.getSharedPreferences("AndroidAutoModule", android.content.Context.MODE_PRIVATE)
+            val browsableStyle = prefs.getInt("browseTreeBrowsableStyle", 0)
+            val playableStyle = prefs.getInt("browseTreePlayableStyle", 0)
+            val extras = android.os.Bundle().apply {
+                if (browsableStyle > 0) putInt(MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, browsableStyle)
+                if (playableStyle > 0) putInt(MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_PLAYABLE, playableStyle)
+            }
             return com.google.common.util.concurrent.Futures.immediateFuture(
                 androidx.media3.session.LibraryResult.ofItem(
                     androidx.media3.common.MediaItem.Builder()
@@ -994,6 +1017,7 @@ class MusicService : HeadlessJsMediaService() {
                                 .setIsBrowsable(true)
                                 .setIsPlayable(false)
                                 .setMediaType(androidx.media3.common.MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+                                .setExtras(extras)
                                 .build()
                         )
                         .build(),
@@ -1030,29 +1054,36 @@ class MusicService : HeadlessJsMediaService() {
                 val items = com.google.common.collect.ImmutableList.builder<androidx.media3.common.MediaItem>()
                 for (i in 0 until array.length()) {
                     val item = array.getJSONObject(i)
-                    items.add(
-                        androidx.media3.common.MediaItem.Builder()
-                            .setMediaId(item.getString("mediaId"))
-                            .setMediaMetadata(
-                                androidx.media3.common.MediaMetadata.Builder()
-                                    .setTitle(item.getString("title"))
-                                    .setSubtitle(item.optString("subtitle", ""))
-                                    .setIsPlayable(item.getString("playable") == "0")
-                                    .setIsBrowsable(item.getString("playable") == "1")
-                                    .setMediaType(
-                                        if (item.getString("playable") == "1") 
-                                            androidx.media3.common.MediaMetadata.MEDIA_TYPE_FOLDER_MIXED
-                                        else 
-                                            androidx.media3.common.MediaMetadata.MEDIA_TYPE_MUSIC
-                                    )
-                                    .apply {
-                                        val uri = item.optString("iconUri", "")
-                                        if (uri.isNotEmpty()) setArtworkUri(android.net.Uri.parse(uri))
-                                    }
-                                    .build()
-                            )
-                            .build()
-                    )
+                    val isPlayable = item.getString("playable") == "0"
+                    val mediaUri = item.optString("mediaUri", "")
+                    val builder = androidx.media3.common.MediaItem.Builder()
+                        .setMediaId(item.getString("mediaId"))
+                        .setMediaMetadata(
+                            androidx.media3.common.MediaMetadata.Builder()
+                                .setTitle(item.getString("title"))
+                                .setSubtitle(item.optString("subtitle", ""))
+                                .setIsPlayable(isPlayable)
+                                .setIsBrowsable(!isPlayable)
+                                .setMediaType(
+                                    if (!isPlayable)
+                                        androidx.media3.common.MediaMetadata.MEDIA_TYPE_FOLDER_MIXED
+                                    else
+                                        androidx.media3.common.MediaMetadata.MEDIA_TYPE_MUSIC
+                                )
+                                .apply {
+                                    val uri = item.optString("iconUri", "")
+                                    if (uri.isNotEmpty()) setArtworkUri(android.net.Uri.parse(uri))
+                                }
+                                .build()
+                        )
+                    if (isPlayable && mediaUri.isNotEmpty()) {
+                        builder.setRequestMetadata(
+                            androidx.media3.common.MediaItem.RequestMetadata.Builder()
+                                .setMediaUri(android.net.Uri.parse(mediaUri))
+                                .build()
+                        )
+                    }
+                    items.add(builder.build())
                 }
                 return com.google.common.util.concurrent.Futures.immediateFuture(
                     androidx.media3.session.LibraryResult.ofItemList(items.build(), params)
@@ -1072,6 +1103,26 @@ class MusicService : HeadlessJsMediaService() {
             return com.google.common.util.concurrent.Futures.immediateFuture(
                 androidx.media3.session.LibraryResult.ofError(androidx.media3.session.LibraryResult.RESULT_ERROR_NOT_SUPPORTED)
             )
+        }
+
+        override fun onAddMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: List<androidx.media3.common.MediaItem>
+        ): com.google.common.util.concurrent.ListenableFuture<List<androidx.media3.common.MediaItem>> {
+            val isAutomotive = mediaSession.isAutomotiveController(controller) ||
+                mediaSession.isAutoCompanionController(controller)
+            if (isAutomotive) {
+                mediaItems.firstOrNull()?.let { mediaItem ->
+                    val mediaId = mediaItem.mediaId
+                    if (mediaId.isNotEmpty()) {
+                        emit(MusicEvents.BUTTON_PLAY_FROM_ID, Bundle().apply {
+                            putString("id", mediaId)
+                        })
+                    }
+                }
+            }
+            return com.google.common.util.concurrent.Futures.immediateFuture(mediaItems)
         }
 
     }
