@@ -1,6 +1,6 @@
 {
   "name": "react-native-track-player",
-  "version": "5.0.0-alpha0-nightly-359af5a12d712d3b685530aed9b9625865a25d74",
+  "version": "5.0.0-alpha0-nightly",
   "description": "A fully fledged audio module created for music apps",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
