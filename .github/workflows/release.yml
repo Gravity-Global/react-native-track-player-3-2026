@@ -1,0 +1,63 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 5.0.0 or 5.0.0-alpha1-nightly). Leave blank to use version from package.json.'
+        required: false
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build library
+        run: yarn build
+
+      - name: Extract version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "LIB_VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "LIB_VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
+          fi
+
+      - name: Pack
+        run: npm pack
+
+      - name: Rename asset
+        run: mv react-native-track-player-*.tgz react-native-track-player-v${{ env.LIB_VERSION }}.tgz
+
+      - name: Determine pre-release flag
+        run: |
+          if echo "${{ env.LIB_VERSION }}" | grep -qE 'alpha|beta|nightly|rc'; then
+            echo "PRERELEASE=true" >> $GITHUB_ENV
+          else
+            echo "PRERELEASE=false" >> $GITHUB_ENV
+          fi
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "v${{ env.LIB_VERSION }}" \
+            --repo "${{ github.repository }}" \
+            --title "v${{ env.LIB_VERSION }}" \
+            ${{ env.PRERELEASE == 'true' && '--prerelease' || '' }} \
+            --notes-file CHANGELOG.md \
+            "react-native-track-player-v${{ env.LIB_VERSION }}.tgz"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
