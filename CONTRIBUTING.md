@@ -1,3 +1,58 @@
+## Release Process
+
+Releases are created by building the library, packing it into a tarball, and uploading it to a GitHub release tag.
+
+### Prerequisites
+
+- [GitHub CLI (`gh`)](https://cli.github.com/) installed and authenticated (`gh auth login`)
+- `yarn` installed
+
+### Steps
+
+1. **Build the library**
+
+   ```sh
+   yarn build
+   ```
+
+   This runs `bob build` and outputs compiled JS to `lib/module/` and TypeScript declarations to `lib/typescript/`.
+
+2. **Pack into a tarball**
+
+   ```sh
+   yarn pack --filename react-native-track-player-v<version>.tgz
+   ```
+
+   Replace `<version>` with the version from `package.json` (e.g. `5.0.0-alpha0`).
+
+3. **Create and push a git tag**
+
+   ```sh
+   git tag v<version>
+   git push origin v<version>
+   ```
+
+4. **Create a GitHub release with the tarball as an asset**
+
+   ```sh
+   gh release create v<version> \
+     --repo <owner>/<repo> \
+     --title "v<version>" \
+     --prerelease \               # omit for stable releases
+     --notes-file CHANGELOG.md \  # or a dedicated release-notes file
+     react-native-track-player-v<version>.tgz
+   ```
+
+   The `--prerelease` flag should be used for alpha/beta/nightly builds. Omit it for stable releases.
+
+5. **Clean up**
+
+   ```sh
+   rm react-native-track-player-v<version>.tgz
+   ```
+
+---
+
 ## Commit Message Format
 
 This project utilizes [the Angular Conventional Changelog commit message format](https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/conventional-changelog-angular#commit-message-format).

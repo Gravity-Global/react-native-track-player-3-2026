@@ -475,42 +475,52 @@ abstract class BaseAudioPlayer internal constructor(
         }
 
         override fun play() {
+            Timber.d("RNTP-DEBUG: ForwardingPlayer.play() called")
             playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.PLAY)
         }
 
         override fun pause() {
+            Timber.d("RNTP-DEBUG: ForwardingPlayer.pause() called")
             playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.PAUSE)
         }
 
         override fun seekToNext() {
+            Timber.d("RNTP-DEBUG: ForwardingPlayer.seekToNext() called")
             playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.NEXT)
         }
 
         override fun seekToNextMediaItem() {
+            Timber.d("RNTP-DEBUG: ForwardingPlayer.seekToNextMediaItem() called")
             playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.NEXT)
         }
 
         override fun seekToPrevious() {
+            Timber.d("RNTP-DEBUG: ForwardingPlayer.seekToPrevious() called")
             playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.PREVIOUS)
         }
 
         override fun seekToPreviousMediaItem() {
+            Timber.d("RNTP-DEBUG: ForwardingPlayer.seekToPreviousMediaItem() called")
             playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.PREVIOUS)
         }
 
         override fun seekForward() {
+            Timber.d("RNTP-DEBUG: ForwardingPlayer.seekForward() called")
             playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.FORWARD)
         }
 
         override fun seekBack() {
+            Timber.d("RNTP-DEBUG: ForwardingPlayer.seekBack() called")
             playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.REWIND)
         }
 
         override fun stop() {
+            Timber.d("RNTP-DEBUG: ForwardingPlayer.stop() called")
             playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.STOP)
         }
 
         override fun seekTo(mediaItemIndex: Int, positionMs: Long) {
+            Timber.d("RNTP-DEBUG: ForwardingPlayer.seekTo(index=$mediaItemIndex, pos=$positionMs) called")
             playerEventHolder.updateOnPlayerActionTriggeredExternally(
                 MediaSessionCallback.SEEK(
                     positionMs
@@ -519,6 +529,7 @@ abstract class BaseAudioPlayer internal constructor(
         }
 
         override fun seekTo(positionMs: Long) {
+            Timber.d("RNTP-DEBUG: ForwardingPlayer.seekTo(pos=$positionMs) called")
             playerEventHolder.updateOnPlayerActionTriggeredExternally(
                 MediaSessionCallback.SEEK(
                     positionMs
