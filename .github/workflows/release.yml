@@ -26,8 +26,8 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Build library
-        run: yarn build
+      # - name: Build library
+      #   run: yarn build
 
       - name: Extract version
         run: |
@@ -38,10 +38,7 @@ jobs:
           fi
 
       - name: Pack
-        run: npm pack
-
-      - name: Rename asset
-        run: mv react-native-track-player-*.tgz react-native-track-player-v${{ env.LIB_VERSION }}.tgz
+        run: yarn pack --filename "react-native-track-player-v${{ env.LIB_VERSION }}.tgz"
 
       - name: Determine pre-release flag
         run: |
