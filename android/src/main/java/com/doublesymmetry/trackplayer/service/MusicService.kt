@@ -81,11 +81,31 @@ class MusicService : HeadlessJsMediaService() {
     }
 
     fun setBrowseTree(data: String) {
+        Timber.d("RNTP-DEBUG: setBrowseTree called, data length=${data.length}")
         applicationContext.getSharedPreferences("AndroidAutoModule", android.content.Context.MODE_PRIVATE)
             .edit()
             .putString("browseTreeData", data)
             .apply()
-        mediaSession.notifyChildrenChanged("/", Int.MAX_VALUE, null)
+        try {
+            val json = org.json.JSONObject(data)
+            val keys = json.keys()
+            val parentIds = mutableListOf<String>()
+            while (keys.hasNext()) {
+                parentIds.add(keys.next())
+            }
+            Timber.d("RNTP-DEBUG: setBrowseTree parentIds=$parentIds connectedControllers=${mediaSession.connectedControllers.size}")
+            mediaSession.connectedControllers.forEach { controller ->
+                Timber.d("RNTP-DEBUG: setBrowseTree notifying controller=${controller.packageName} isAutoCompanion=${mediaSession.isAutoCompanionController(controller)} isAutomotive=${mediaSession.isAutomotiveController(controller)}")
+                parentIds.forEach { parentId ->
+                    mediaSession.notifyChildrenChanged(controller, parentId, Int.MAX_VALUE, null)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.d("RNTP-DEBUG: setBrowseTree error: ${e.message}")
+            mediaSession.connectedControllers.forEach { controller ->
+                mediaSession.notifyChildrenChanged(controller, "/", Int.MAX_VALUE, null)
+            }
+        }
     }
 
     fun setBrowseTreeStyle(browsableStyle: Int, playableStyle: Int) {
@@ -272,12 +292,14 @@ class MusicService : HeadlessJsMediaService() {
                 }
             }
         }
+        val rawCapabilities = options.getIntegerArrayList("capabilities")
         val capabilities =
-            options.getIntegerArrayList("capabilities")?.map { Capability.entries[it] }
+            rawCapabilities?.map { Capability.entries[it] }
                 ?: emptyList()
         var notificationCapabilities = options.getIntegerArrayList("notificationCapabilities")
             ?.map { Capability.entries[it] } ?: emptyList()
         if (notificationCapabilities.isEmpty()) notificationCapabilities = capabilities
+        Timber.d("RNTP-DEBUG: updateOptions rawCapabilities=$rawCapabilities capabilities=$capabilities notificationCapabilities=$notificationCapabilities")
 
         val playerCommandsBuilder = Player.Commands.Builder().addAll(
             // HACK: without COMMAND_GET_CURRENT_MEDIA_ITEM, notification cannot be created
@@ -311,9 +333,11 @@ class MusicService : HeadlessJsMediaService() {
                 else -> {}
             }
         }
+        Timber.d("RNTP-DEBUG: CustomCommandButton entries=${CustomCommandButton.entries.map { "${it.name}→${it.capability}" }}")
         customLayout = CustomCommandButton.entries
             .filter { notificationCapabilities.contains(it.capability) }
             .map { c -> c.commandButton }
+        Timber.d("RNTP-DEBUG: customLayout size=${customLayout.size}")
         val sessionCommandsBuilder =
             MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
         customLayout.forEach { v ->
@@ -323,14 +347,11 @@ class MusicService : HeadlessJsMediaService() {
         sessionCommands = sessionCommandsBuilder.build()
         playerCommands = playerCommandsBuilder.build()
 
-        if (mediaSession.mediaNotificationControllerInfo != null) {
-            // https://github.com/androidx/media/blob/c35a9d62baec57118ea898e271ac66819399649b/demos/session_service/src/main/java/androidx/media3/demo/session/DemoMediaLibrarySessionCallback.kt#L107
-            mediaSession.setCustomLayout(
-                mediaSession.mediaNotificationControllerInfo!!,
-                customLayout
-            )
+        // Update all connected controllers (notification, Android Auto, etc.)
+        mediaSession.connectedControllers.forEach { controller ->
+            mediaSession.setCustomLayout(controller, customLayout)
             mediaSession.setAvailableCommands(
-                mediaSession.mediaNotificationControllerInfo!!,
+                controller,
                 sessionCommandsBuilder.build(),
                 playerCommands!!
             )
@@ -577,6 +598,7 @@ class MusicService : HeadlessJsMediaService() {
 
         scope.launch {
             event.onPlayerActionTriggeredExternally.collect {
+                Timber.d("RNTP-DEBUG: onPlayerActionTriggeredExternally received: $it")
                 when (it) {
                     is MediaSessionCallback.RATING -> {
                         Bundle().apply {
@@ -923,6 +945,9 @@ class MusicService : HeadlessJsMediaService() {
                     onStartCommand(null, 0, 0)
                 }
             }
+            Timber.d("RNTP-DEBUG: onConnect isMediaNotification=$isMediaNotificationController isAutomotive=$isAutomotiveController isAutoCompanion=$isAutoCompanionController")
+            Timber.d("RNTP-DEBUG: onConnect playerCommands=${playerCommands} sessionCommands=${sessionCommands} customLayout=${customLayout.size} items")
+            Timber.d("RNTP-DEBUG: onConnect playerInitialized=${::player.isInitialized} sessionPlayer=${mediaSession.player.javaClass.simpleName}")
             return if (
                 isMediaNotificationController ||
                 isAutomotiveController ||
@@ -949,6 +974,7 @@ class MusicService : HeadlessJsMediaService() {
             command: SessionCommand,
             args: Bundle
         ): ListenableFuture<SessionResult> {
+            Timber.d("RNTP-DEBUG: onCustomCommand action=${command.customAction} from=${controller.packageName}")
             player.forwardingPlayer.let {
                 when (command.customAction) {
                     CustomCommandButton.JUMP_BACKWARD.customAction -> { it.seekBack() }
@@ -995,6 +1021,18 @@ class MusicService : HeadlessJsMediaService() {
             return super.onSetRating(session, controller, rating)
         }
 
+        override fun onSubscribe(
+            session: androidx.media3.session.MediaLibraryService.MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+            params: androidx.media3.session.MediaLibraryService.LibraryParams?
+        ): com.google.common.util.concurrent.ListenableFuture<androidx.media3.session.LibraryResult<Void>> {
+            Timber.d("RNTP-DEBUG: onSubscribe parentId=$parentId from=${browser.packageName}")
+            return Futures.immediateFuture(
+                LibraryResult.ofVoid()
+            )
+        }
+
         // ANDROID_AUTO_BROWSE
         override fun onGetLibraryRoot(
             session: androidx.media3.session.MediaLibraryService.MediaLibrarySession,
@@ -1034,6 +1072,7 @@ class MusicService : HeadlessJsMediaService() {
             pageSize: Int,
             params: androidx.media3.session.MediaLibraryService.LibraryParams?
         ): com.google.common.util.concurrent.ListenableFuture<androidx.media3.session.LibraryResult<com.google.common.collect.ImmutableList<androidx.media3.common.MediaItem>>> {
+            Timber.d("RNTP-DEBUG: onGetChildren parentId=$parentId from=${browser.packageName}")
             val prefs = applicationContext.getSharedPreferences("AndroidAutoModule", android.content.Context.MODE_PRIVATE)
             val data = prefs.getString("browseTreeData", null)
             if (data.isNullOrEmpty()) {
