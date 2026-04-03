@@ -874,6 +874,8 @@ extension NativeTrackPlayerImpl {
 
         // Stub out events that are only supported on Android
         events.append("remote-play-pause")
+        events.append("remote-skip")
+        events.append("remote-play-id")
 
         return events
     }
