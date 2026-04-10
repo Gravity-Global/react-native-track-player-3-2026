@@ -1095,6 +1095,12 @@ class MusicService : HeadlessJsMediaService() {
                     val item = array.getJSONObject(i)
                     val isPlayable = item.getString("playable") == "0"
                     val mediaUri = item.optString("mediaUri", "")
+                    val groupTitle = item.optString("groupTitle", "")
+                    val extras = if (groupTitle.isNotEmpty()) {
+                        android.os.Bundle().apply {
+                            putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", groupTitle)
+                        }
+                    } else null
                     val builder = androidx.media3.common.MediaItem.Builder()
                         .setMediaId(item.getString("mediaId"))
                         .setMediaMetadata(
@@ -1109,6 +1115,7 @@ class MusicService : HeadlessJsMediaService() {
                                     else
                                         androidx.media3.common.MediaMetadata.MEDIA_TYPE_MUSIC
                                 )
+                                .apply { if (extras != null) setExtras(extras) }
                                 .apply {
                                     val uri = item.optString("iconUri", "")
                                     if (uri.isNotEmpty()) setArtworkUri(android.net.Uri.parse(uri))
